@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台股機器人</title>
+<style>
+  :root { --bg:#ffffff; --fg:#1f2328; --muted:#6b7280; --accent:#d62728; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e1117; --fg:#e6e6e6; --muted:#9aa0a6; } }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--fg); font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; }
+  main { text-align:center; padding:24px 16px; max-width:420px; }
+  h1 { font-size:22px; margin:0 0 8px; }
+  p { color:var(--muted); line-height:1.6; margin:6px 0; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:8px; }
+  .ok .dot { background:#2ca02c; }
+  button { margin-top:16px; padding:10px 20px; font-size:16px; border:0; border-radius:8px; background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+<main id="m">
+  <h1>📈 台股機器人</h1>
+  <p id="s"><span class="dot"></span>正在尋找主機…</p>
+  <p id="t"></p>
+  <button id="b" style="display:none" onclick="go()">重新檢查</button>
+</main>
+<script>
+const s = document.getElementById("s"), t = document.getElementById("t"), b = document.getElementById("b");
+let timer = null;
+async function go() {
+  b.style.display = "none"; clearTimeout(timer);
+  s.innerHTML = '<span class="dot"></span>正在尋找主機…'; t.textContent = "";
+  try {
+    const j = await (await fetch("url.json?ts=" + Date.now(), {cache: "no-store"})).json();
+    if (!j.url) throw new Error("offline");
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 8000);
+    await fetch(j.url + "/_stcore/health", {mode: "no-cors", cache: "no-store", signal: ctl.signal});   // 連得到才跳轉
+    document.getElementById("m").className = "ok";
+    s.innerHTML = '<span class="dot"></span>找到主機，正在前往…';
+    location.replace(j.url);
+  } catch (e) {
+    s.innerHTML = '<span class="dot"></span>主機目前離線';
+    t.textContent = "主機電腦可能關機、睡眠或沒有開啟公開連線。會每 15 秒自動重試。";
+    b.style.display = "inline-block";
+    timer = setTimeout(go, 15000);
+  }
+}
+go();
+</script>
+</body>
+</html>
